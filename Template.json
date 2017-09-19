@@ -1,0 +1,55 @@
+﻿{
+    "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+     "sbBus": {
+      "type":"array" 
+    },
+    "keyVaultName": {
+      "type": "string"
+    }
+    },
+    "variables": {
+       "sbVersion": "2015-08-01"
+    },
+    "resources": [{
+        "apiVersion": "[variables('sbVersion')]",
+        "name": "[parameters('sbBus')[copyIndex()].sBName]",
+        "type": "Microsoft.ServiceBus/Namespaces",
+        "location": "[resourceGroup().location]",
+        "kind": "Messaging",
+        "sku": {
+            "name": "StandardSku",
+            "tier": "Standard"
+        },
+        "copy": { 
+          "name": "servicebusLoop", 
+          "count": "[length(parameters('sbBus'))]" 
+        }
+
+
+    },
+     {      
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(parameters('keyVaultName'),'/',parameters('sbBus')[copyIndex()].vaultKey)]",
+         
+          "apiVersion": "2015-06-01",
+       
+          "properties": {
+                            "value": "[listkeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', parameters('sbBus')[copyIndex()].sBName, 'RootManageSharedAccessKey'), variables('sbVersion')).primaryConnectionString]"
+
+                            
+          },
+           "copy": { 
+          "name": "servicebusSecretsLoop", 
+          "count": "[length(parameters('sbBus'))]" 
+        },
+         
+           "dependsOn": [
+            "[concat('Microsoft.ServiceBus/Namespaces/', parameters('sbBus')[copyIndex()].sBName)]"
+          ]
+      }
+
+
+    ]
+}
